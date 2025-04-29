@@ -17,7 +17,7 @@ load_dotenv()
 
 # Константы интервалов
 ORDER_SYNC_INTERVAL_SECONDS = 15 * 60   # 15 минут в секундах
-CATALOG_SYNC_INTERVAL_HOURS = 1         # 24 часа
+CATALOG_SYNC_INTERVAL_HOURS = 1         # 1 час
 
 def main():
     print("🚀 Старт основного воркера синхронизации заказов и каталога...")
@@ -58,7 +58,7 @@ def main():
                     success = send_to_crm(mapped_order)
 
                     if success:
-                        update_ux_order(order_id, "processing", x_token)
+                        update_ux_order(order_id, "process", x_token)
                         print(f"✅ Заказ #{order_id} успешно отправлен в CRM и обновлён на сайте UXIM.")
                     else:
                         print(f"❌ Ошибка отправки заказа #{order_id} в CRM.")
