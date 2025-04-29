@@ -47,6 +47,11 @@ def main():
 
             orders = fetch_orders_from_uxim(x_token)
 
+            # 👇 Добавляем проверку
+            if isinstance(orders, list) and len(orders) == 1 and isinstance(orders[0], list):
+                orders = orders[0]
+
+
             if not orders:
                 print("📭 Новых заказов нет.")
             else:
