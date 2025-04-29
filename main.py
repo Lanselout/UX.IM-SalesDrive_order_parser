@@ -8,8 +8,8 @@ from mapper import map_order_for_salesdrive
 from send_to_crm import send_to_crm
 from update_ux_order import update_ux_order
 from sync_tracker import get_last_sync_time, update_last_sync_time
-from sync_catalog_with_yml import sync_catalog_with_yml
-from catalog_sync_tracker import get_last_catalog_sync_time, update_last_catalog_sync_time
+from sync_catalog_with_yml import sync_catalog
+from catalog_sync_tracker import read_last_catalog_sync_time, write_catalog_sync_time
 
 load_dotenv()
 
@@ -30,12 +30,12 @@ def main():
             now_utc = datetime.now(timezone.utc)
 
             # 🔄 Проверяем необходимость синхронизации каталога
-            last_catalog_sync = get_last_catalog_sync_time()
+            last_catalog_sync = read_last_catalog_sync_time()
             if not last_catalog_sync or (now_utc - last_catalog_sync >= timedelta(hours=CATALOG_SYNC_INTERVAL_HOURS)):
                 print("🔄 Пора синхронизировать каталог товаров с YML...")
                 try:
-                    sync_catalog_with_yml()
-                    update_last_catalog_sync_time(now_utc)
+                    sync_catalog()
+                    write_catalog_sync_time(now_utc)
                     print(f"✅ Каталог успешно синхронизирован в {now_utc.isoformat()}")
                 except Exception as e:
                     print(f"❌ Ошибка при синхронизации каталога: {e}")
