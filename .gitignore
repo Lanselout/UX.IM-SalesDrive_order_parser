@@ -1,4 +1,5 @@
 .env
 last_sync.json
+last_catalog_sync.json
 __pycache__/
 *.pyc
