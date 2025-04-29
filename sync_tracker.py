@@ -6,13 +6,20 @@ import os
 LAST_SYNC_FILE = "last_sync.json"
 
 
-def get_last_sync_time():
-    if not os.path.exists(LAST_SYNC_FILE):
+def get_last_sync_time() -> datetime:
+    try:
+        with open(LAST_SYNC_FILE, "r") as f:
+            data = json.load(f)
+            raw_time = data.get("last_sync_time")
+            print(f"📄 Считанное значение времени: {raw_time} ({type(raw_time)})")
+            return datetime.fromisoformat(raw_time)
+    except Exception as e:
         now = datetime.now(timezone.utc)
-        with open(LAST_SYNC_FILE, "w") as f:
-            json.dump({"last_sync": now.isoformat()}, f)
+        print(f"⚠️ Ошибка при чтении файла синхронизации: {e}")
         print(f"📁 Создан новый файл синхронизации с текущим временем (UTC): {now.isoformat()}")
+        update_last_sync_time(now)
         return now
+
 
     try:
         with open(LAST_SYNC_FILE, "r") as f:
