@@ -1,16 +1,51 @@
 import os
 
 def map_order_for_salesdrive(order: dict) -> dict:
+    crm_api_key = os.getenv("CRM_API_KEY", "").strip('"')
+
     user_info = order.get("user", {}).get("info", {})
     products = order.get("info", {}).get("busked", [])
     delivery = order.get("delivery", {})
-    np_city = delivery.get("meta", {}).get("np_city", {})
-    np_warehouse = delivery.get("meta", {}).get("np_warehouse", {})
+    delivery_raw_meta = delivery.get("meta")
+    delivery_meta = delivery_raw_meta if isinstance(delivery_raw_meta, dict) else {}
+    delivery_name = delivery.get("name", "").lower()
+    delivery_city = delivery.get("city", "")
 
-    # Передача типа оплаты напрямую
-    payment_method = str(order.get("pay_type", "")).strip()
+    # Обработка данных для курьерской доставки
+    service_type = "Warehouse"  # по умолчанию отделение
+    shipping_address = delivery_city
 
-    # Маппинг товаров
+    delivery_street = delivery.get("address", "")
+    delivery_building = delivery.get("b_number", "")
+    delivery_flat = delivery.get("apartment", "")
+
+    delivery_warehouse = delivery.get("warehouse", "")
+
+    if "curier" in delivery_name:
+        service_type = "Doors"
+        street_part = f"вул. {delivery_street}" if delivery_street else ""
+        building_part = f"д.{delivery_building}" if delivery_building else ""
+        flat_part = f"кв.{delivery_flat}" if delivery_flat else ""
+        shipping_address = ", ".join(filter(None, [delivery_city, street_part, building_part, flat_part]))
+    elif "urk poshta" in delivery_name:
+        service_type = "Warehouse"
+        shipping_address = f"{delivery_city}, відділення {delivery_warehouse}"
+
+    # Определяем тип оплаты по order["integrate"]["pay_type"]
+    pay_type = order.get("info", {}).get("pay_type")
+
+    try:
+        pay_type_int = int(pay_type)
+    except (ValueError, TypeError):
+        pay_type_int = None
+
+    payment_method_map = {
+    1: "Післяплата",
+    4: "Оплата карткою (mono)",
+    6: "LiqPay"
+    }
+    payment_method = payment_method_map.get(pay_type_int, str(pay_type) if pay_type else "Не указан")
+
     mapped_products = []
     for item in products:
         mapped_products.append({
@@ -23,8 +58,8 @@ def map_order_for_salesdrive(order: dict) -> dict:
             "sku": ""
         })
 
-    return {
-        "form": os.getenv("CRM_API_KEY", "").strip('"'),
+    result = {
+        "form": crm_api_key,
         "getResultData": "1",
         "fName": user_info.get("name", ""),
         "lName": user_info.get("surname", ""),
@@ -35,31 +70,31 @@ def map_order_for_salesdrive(order: dict) -> dict:
         "comment": order.get("comment", ""),
         "shipping_method": delivery.get("name", ""),
         "payment_method": payment_method,
-        "shipping_address": delivery.get("warehouse", ""),
+        "shipping_address": shipping_address,
         "sajt": "pitaka.ux.im",
         "externalId": str(order.get("id", "")),
         "organizationId": "",
         "shipping_costs": "",
         "products": mapped_products,
         "novaposhta": {
-            "ServiceType": "Warehouse",
-            "payer": "recipient",
-            "area": np_city.get("AreaDescription", ""),
-            "region": np_city.get("AreaDescriptionRu", ""),
-            "city": np_city.get("Description", ""),
+            "ServiceType": service_type if "nova poshta" in delivery_name else "",
+            "payer": "",
+            "area": "",
+            "region": "",
+            "city": delivery_city if "nova poshta" in delivery_name else "",
             "cityNameFormat": "full",
-            "WarehouseNumber": np_warehouse.get("Number", ""),
-            "Street": "",
-            "BuildingNumber": "",
-            "Flat": "",
+            "WarehouseNumber": delivery_warehouse if "nova poshta" in delivery_name and service_type == "Warehouse" else "",
+            "Street": delivery_street if service_type == "Doors" and "nova poshta" in delivery_name else "",
+            "BuildingNumber": delivery_building if service_type == "Doors" and "nova poshta" in delivery_name else "",
+            "Flat": delivery_flat if service_type == "Doors" and "nova poshta" in delivery_name else "",
             "ttn": ""
         },
         "ukrposhta": {
-            "ServiceType": "",
+            "ServiceType": service_type if "urk poshta" in delivery_name else "",
             "payer": "",
             "type": "",
-            "city": "",
-            "WarehouseNumber": "",
+            "city": delivery_city if "urk poshta" in delivery_name else "",
+            "WarehouseNumber": delivery_warehouse if "urk poshta" in delivery_name else "",
             "Street": "",
             "BuildingNumber": "",
             "Flat": "",
@@ -90,3 +125,5 @@ def map_order_for_salesdrive(order: dict) -> dict:
         "prodex24term": "",
         "prodex24page": ""
     }
+
+    return result
